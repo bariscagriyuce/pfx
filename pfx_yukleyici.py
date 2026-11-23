@@ -49,7 +49,7 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
-__version__ = "1.1.0"
+__version__ = "1.1.1"
 REPO = "bariscagriyuce/pfx"
 INSTALLED_PATH = Path("/usr/bin/pfx-yukleyici")
 HOME = Path.home()
@@ -148,6 +148,7 @@ STRINGS: dict[str, dict[str, str]] = {
     },
     "col_cert": {"en": "Certificate", "tr": "Sertifika", "pt_BR": "Certificado"},
     "col_loc": {"en": "Location", "tr": "Konum", "pt_BR": "Local"},
+    "col_expires": {"en": "Expires", "tr": "Geçerlilik sonu", "pt_BR": "Expira em"},
     "refresh": {"en": "Refresh", "tr": "Yenile", "pt_BR": "Atualizar"},
     "delete_sel": {"en": "Delete selected", "tr": "Seçileni sil",
                    "pt_BR": "Excluir selecionado"},
@@ -510,10 +511,22 @@ def list_user_certs(db: NssDb) -> list[InstalledCert]:
     r = run(["certutil", "-L", "-d", db.spec])
     res = []
     for line in r.stdout.splitlines()[4:]:
-        m = re.match(r"^(.*?)\s{2,}(\S*,\S*,\S*)\s*$", line)
+        # Long nicknames are separated from the trust flags by a single space,
+        # so take the trust flags as the last token.
+        m = re.match(r"^(.*\S)\s+([A-Za-z]*,[A-Za-z]*,[A-Za-z]*)\s*$", line)
         if m and "u" in m.group(2):
             res.append(InstalledCert(m.group(1), m.group(2), db))
     return res
+
+
+def cert_expiry(c: InstalledCert) -> str:
+    r = run(["certutil", "-L", "-d", c.db.spec, "-n", c.nickname, "-a"])
+    pems = _split_pem(r.stdout)
+    return cert_info(pems[0]).get("notAfter", "") if pems else ""
+
+
+def display_name(nickname: str) -> str:
+    return nickname.split(":", 1)[1] if nickname.startswith("NSS Certificate DB:") else nickname
 
 
 def delete_cert(c: InstalledCert) -> None:
@@ -889,7 +902,7 @@ class ManageTab(QWidget):
         lay = QVBoxLayout(self)
         lay.addWidget(QLabel(tr("installed_label")))
         self.tree = QTreeWidget()
-        self.tree.setHeaderLabels([tr("col_cert"), tr("col_loc")])
+        self.tree.setHeaderLabels([tr("col_cert"), tr("col_expires"), tr("col_loc")])
         self.tree.setColumnWidth(0, 360)
         lay.addWidget(self.tree, 1)
         row = QHBoxLayout()
@@ -909,8 +922,9 @@ class ManageTab(QWidget):
             if not (db.path / "cert9.db").exists():
                 continue
             for c in list_user_certs(db):
-                it = QTreeWidgetItem([c.nickname, db.label])
-                it.setToolTip(1, str(db.path))
+                it = QTreeWidgetItem([display_name(c.nickname), cert_expiry(c), db.label])
+                it.setToolTip(0, c.nickname)
+                it.setToolTip(2, str(db.path))
                 it.setData(0, Qt.UserRole, c)
                 self.tree.addTopLevelItem(it)
 
@@ -921,7 +935,7 @@ class ManageTab(QWidget):
         c: InstalledCert = it.data(0, Qt.UserRole)
         if QMessageBox.question(
                 self, tr("app_name"),
-                tr("confirm_delete", name=c.nickname, loc=c.db.label)) != QMessageBox.Yes:
+                tr("confirm_delete", name=display_name(c.nickname), loc=c.db.label)) != QMessageBox.Yes:
             return
         try:
             delete_cert(c)

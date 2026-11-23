@@ -1,6 +1,6 @@
 # Maintainer: bariscagriyuce <https://github.com/bariscagriyuce>
 pkgname=pfx-yukleyici
-pkgver=1.1.0
+pkgver=1.1.1
 pkgrel=1
 pkgdesc="Install PFX/P12 certificates into browsers and the system without a terminal"
 arch=('any')
