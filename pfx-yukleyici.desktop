@@ -1,0 +1,14 @@
+[Desktop Entry]
+Type=Application
+Name=PFX Certificate Installer
+Name[tr]=PFX Sertifika Yükleyici
+Name[pt_BR]=Instalador de Certificados PFX
+Comment=Install PFX/P12 certificates into browsers and the system
+Comment[tr]=PFX/P12 sertifikalarını tarayıcılara ve sisteme yükler
+Comment[pt_BR]=Instala certificados PFX/P12 nos navegadores e no sistema
+Exec=pfx-yukleyici %f
+Icon=application-pkcs12
+Terminal=false
+Categories=Utility;Security;
+MimeType=application/x-pkcs12;
+Keywords=pfx;p12;pkcs12;certificate;sertifika;certificado;e-imza;mühür;e-cpf;e-cnpj;
