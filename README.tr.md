@@ -16,7 +16,8 @@ Linux masaüstü uygulaması (CachyOS / Arch Linux için hazırlandı).
   - Flatpak tarayıcılar
 - Yüklemeden önce parolayı doğrular ve sertifika bilgilerini (sahibi, veren, geçerlilik) gösterir.
 - İsteğe bağlı olarak zincirdeki CA (kök/ara) sertifikalarını sistem güven deposuna ekler.
-- Yüklü kişisel sertifikaları listeler ve silmenizi sağlar.
+- Yüklü kişisel sertifikaları (geçerlilik sonuyla) listeler ve silmenizi sağlar.
+- Yüklü bir sertifikayı özel anahtarıyla birlikte parolalı bir `.pfx` dosyası olarak **dışa aktarır** (isteğe bağlı olarak eski sistemlerle uyumlu biçimde).
 - Eski (legacy) şifrelemeli PFX dosyalarını da destekler.
 - Parolalar komut satırında görünmez.
 - **İngilizce, Türkçe ve Brezilya Portekizcesi** dillerinde (sistem dilinden algılanır, uygulama içinden değiştirilebilir).
@@ -51,7 +52,7 @@ Yukarıdaki bağımlılıkları paket yöneticinizle kurun, ardından bu klasör
 2. Sertifikanın yükleneceği yerleri işaretleyip **Sertifikayı Yükle**'ye tıklayın.
 3. Tarayıcılarınızı yeniden başlatın.
 
-**Yüklü Sertifikalar** sekmesi kişisel sertifikaları listeler ve silmenizi sağlar.
+**Yüklü Sertifikalar** sekmesi kişisel sertifikaları listeler; birini seçip **PFX olarak dışa aktar…** ile kaydedebilir veya silebilirsiniz.
 **Hakkında / Güncelleme** sekmesi sürümü gösterir ve güncellemeleri elle denetlemenizi sağlar.
 
 ## Kaldırma

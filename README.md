@@ -16,7 +16,8 @@ certificates — into your browsers **without using the terminal**.
   - Flatpak browsers
 - Shows the certificate details (subject, issuer, validity) and verifies the password before installing.
 - Optionally adds the CA (root/intermediate) certificates of the chain to the system trust store.
-- Lists installed personal certificates and lets you remove them.
+- Lists installed personal certificates (with expiry date) and lets you remove them.
+- **Exports** an installed certificate with its private key as a password-protected `.pfx` file (optionally in a format compatible with older systems).
 - Supports legacy-encrypted PFX files.
 - Passwords are never passed on the command line.
 - Available in **English, Turkish and Brazilian Portuguese** (detected from the system language, can be changed in the app).
@@ -50,7 +51,7 @@ in this folder. It installs the app for your user only. With this install the ap
 2. Select where the certificate should be installed and click **Install Certificate**.
 3. Restart your browsers.
 
-The **Installed Certificates** tab lists personal certificates and lets you delete them.
+The **Installed Certificates** tab lists personal certificates; select one to **Export as PFX…** or delete it.
 The **About / Updates** tab shows the version and lets you check for updates manually.
 
 ## Uninstall

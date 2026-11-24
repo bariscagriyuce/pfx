@@ -17,7 +17,8 @@ A1 (e-CPF, e-CNPJ) ou de autenticação de cliente — nos seus navegadores
   - Navegadores Flatpak
 - Verifica a senha e mostra os dados do certificado (titular, emissor, validade) antes de instalar.
 - Opcionalmente adiciona os certificados de AC (raiz/intermediários) da cadeia ao repositório de confiança do sistema.
-- Lista os certificados pessoais instalados e permite removê-los.
+- Lista os certificados pessoais instalados (com a data de validade) e permite removê-los.
+- **Exporta** um certificado instalado com a chave privada como arquivo `.pfx` protegido por senha (opcionalmente em formato compatível com sistemas antigos).
 - Suporta arquivos PFX com criptografia antiga (legacy).
 - As senhas nunca são passadas pela linha de comando.
 - Disponível em **inglês, turco e português do Brasil** (detectado pelo idioma do sistema, pode ser alterado no aplicativo).
@@ -52,7 +53,7 @@ Instale as dependências acima com o seu gerenciador de pacotes e execute
 2. Marque onde o certificado deve ser instalado e clique em **Instalar Certificado**.
 3. Reinicie os navegadores.
 
-A aba **Certificados Instalados** lista os certificados pessoais e permite excluí-los.
+A aba **Certificados Instalados** lista os certificados pessoais; selecione um para **Exportar como PFX…** ou excluí-lo.
 A aba **Sobre / Atualizações** mostra a versão e permite verificar atualizações manualmente.
 
 ## Desinstalação

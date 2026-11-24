@@ -31,6 +31,8 @@ from PySide6.QtWidgets import (
     QApplication,
     QCheckBox,
     QComboBox,
+    QDialog,
+    QDialogButtonBox,
     QFileDialog,
     QFormLayout,
     QGroupBox,
@@ -49,7 +51,7 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
-__version__ = "1.1.1"
+__version__ = "1.2.0"
 REPO = "bariscagriyuce/pfx"
 INSTALLED_PATH = Path("/usr/bin/pfx-yukleyici")
 HOME = Path.home()
@@ -256,6 +258,52 @@ STRINGS: dict[str, dict[str, str]] = {
         "pt_BR": "Esta cópia não foi instalada como pacote do sistema, então não "
                  "pode se atualizar sozinha. Abrir a página de download?",
     },
+    # Export
+    "export_sel": {"en": "Export as PFX…", "tr": "PFX olarak dışa aktar…",
+                   "pt_BR": "Exportar como PFX…"},
+    "export_title": {"en": "Export certificate", "tr": "Sertifikayı dışa aktar",
+                     "pt_BR": "Exportar certificado"},
+    "export_info": {
+        "en": "The certificate “{name}” will be saved together with its private key. "
+              "Choose a password to protect the PFX file:",
+        "tr": "“{name}” sertifikası özel anahtarıyla birlikte kaydedilecek. "
+              "PFX dosyasını korumak için bir parola belirleyin:",
+        "pt_BR": "O certificado “{name}” será salvo junto com a chave privada. "
+                 "Escolha uma senha para proteger o arquivo PFX:",
+    },
+    "new_password": {"en": "New password:", "tr": "Yeni parola:",
+                     "pt_BR": "Nova senha:"},
+    "repeat_password": {"en": "Repeat password:", "tr": "Parola (tekrar):",
+                        "pt_BR": "Repita a senha:"},
+    "legacy_export": {
+        "en": "Compatible with older systems (Windows 7, old Java) – weaker encryption",
+        "tr": "Eski sistemlerle uyumlu (Windows 7, eski Java) – daha zayıf şifreleme",
+        "pt_BR": "Compatível com sistemas antigos (Windows 7, Java antigo) – "
+                 "criptografia mais fraca",
+    },
+    "pw_empty": {"en": "The password cannot be empty.",
+                 "tr": "Parola boş olamaz.",
+                 "pt_BR": "A senha não pode ficar vazia."},
+    "pw_mismatch": {"en": "The passwords do not match.",
+                    "tr": "Parolalar eşleşmiyor.",
+                    "pt_BR": "As senhas não coincidem."},
+    "save_pfx": {"en": "Save PFX file", "tr": "PFX dosyasını kaydet",
+                 "pt_BR": "Salvar arquivo PFX"},
+    "export_done": {
+        "en": "The certificate was saved to:\n{path}\n\nKeep this file and its "
+              "password safe – anyone who has both can use your certificate.",
+        "tr": "Sertifika şuraya kaydedildi:\n{path}\n\nBu dosyayı ve parolasını "
+              "güvenli saklayın – ikisine birden sahip olan herkes sertifikanızı "
+              "kullanabilir.",
+        "pt_BR": "O certificado foi salvo em:\n{path}\n\nGuarde este arquivo e a "
+                 "senha em segurança – quem tiver os dois pode usar seu certificado.",
+    },
+    "export_failed": {"en": "Export failed:\n{err}",
+                      "tr": "Dışa aktarma başarısız:\n{err}",
+                      "pt_BR": "Falha na exportação:\n{err}"},
+    "select_cert_first": {"en": "Select a certificate in the list first.",
+                          "tr": "Önce listeden bir sertifika seçin.",
+                          "pt_BR": "Selecione primeiro um certificado na lista."},
     "open_project": {"en": "Project page", "tr": "Proje sayfası",
                      "pt_BR": "Página do projeto"},
 }
@@ -527,6 +575,68 @@ def cert_expiry(c: InstalledCert) -> str:
 
 def display_name(nickname: str) -> str:
     return nickname.split(":", 1)[1] if nickname.startswith("NSS Certificate DB:") else nickname
+
+
+def export_cert(c: InstalledCert, target: Path, password: str,
+                legacy: bool = False) -> None:
+    """Export a certificate with its private key (and chain) as PKCS#12."""
+    if not password:
+        raise PfxError(tr("pw_empty"))
+    cmd = ["pk12util", "-o", str(target), "-n", c.nickname, "-d", c.db.spec, "-K", ""]
+    if legacy:
+        des3 = "PKCS #12 V2 PBE With SHA-1 And 3KEY Triple DES-CBC"
+        cmd += ["-c", des3, "-C", des3, "-M", "SHA-1"]
+    old_umask = os.umask(0o077)  # the file contains a private key
+    try:
+        with SecretFile(password) as pw:
+            r = run(cmd + ["-w", pw])
+    finally:
+        os.umask(old_umask)
+    if r.returncode != 0:
+        try:
+            target.unlink()
+        except OSError:
+            pass
+        raise PfxError((r.stderr or r.stdout).strip()[-600:])
+
+
+def safe_filename(name: str) -> str:
+    name = re.sub(r"\s+\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$", "", name)
+    name = re.sub(r'[\\/:*?"<>|]+', "_", name).strip(" ._")
+    return name or "certificate"
+
+
+class ExportDialog(QDialog):
+    def __init__(self, parent: QWidget, name: str):
+        super().__init__(parent)
+        self.setWindowTitle(tr("export_title"))
+        lay = QVBoxLayout(self)
+        info = QLabel(tr("export_info", name=name))
+        info.setWordWrap(True)
+        lay.addWidget(info)
+        form = QFormLayout()
+        self.pw1 = QLineEdit()
+        self.pw1.setEchoMode(QLineEdit.Password)
+        self.pw2 = QLineEdit()
+        self.pw2.setEchoMode(QLineEdit.Password)
+        form.addRow(tr("new_password"), self.pw1)
+        form.addRow(tr("repeat_password"), self.pw2)
+        lay.addLayout(form)
+        self.legacy = QCheckBox(tr("legacy_export"))
+        lay.addWidget(self.legacy)
+        bb = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
+        bb.accepted.connect(self.validate)
+        bb.rejected.connect(self.reject)
+        lay.addWidget(bb)
+        self.resize(460, self.sizeHint().height())
+
+    def validate(self):
+        if not self.pw1.text():
+            QMessageBox.warning(self, tr("app_name"), tr("pw_empty"))
+        elif self.pw1.text() != self.pw2.text():
+            QMessageBox.warning(self, tr("app_name"), tr("pw_mismatch"))
+        else:
+            self.accept()
 
 
 def delete_cert(c: InstalledCert) -> None:
@@ -910,8 +1020,13 @@ class ManageTab(QWidget):
         r.clicked.connect(self.refresh)
         d = QPushButton(QIcon.fromTheme("edit-delete"), tr("delete_sel"))
         d.clicked.connect(self.delete)
+        e = QPushButton(QIcon.fromTheme("document-export",
+                                        QIcon.fromTheme("document-save-as")),
+                        tr("export_sel"))
+        e.clicked.connect(self.export)
         row.addStretch(1)
         row.addWidget(r)
+        row.addWidget(e)
         row.addWidget(d)
         lay.addLayout(row)
         self.refresh()
@@ -927,6 +1042,31 @@ class ManageTab(QWidget):
                 it.setToolTip(2, str(db.path))
                 it.setData(0, Qt.UserRole, c)
                 self.tree.addTopLevelItem(it)
+
+    def export(self):
+        it = self.tree.currentItem()
+        if not it:
+            QMessageBox.information(self, tr("app_name"), tr("select_cert_first"))
+            return
+        c: InstalledCert = it.data(0, Qt.UserRole)
+        name = display_name(c.nickname)
+        dlg = ExportDialog(self, name)
+        if dlg.exec() != QDialog.Accepted:
+            return
+        default = str(HOME / f"{safe_filename(name)}.pfx")
+        fn, _ = QFileDialog.getSaveFileName(self, tr("save_pfx"), default,
+                                            tr("file_filter"))
+        if not fn:
+            return
+        target = Path(fn)
+        if target.suffix.lower() not in (".pfx", ".p12"):
+            target = target.with_suffix(target.suffix + ".pfx")
+        try:
+            export_cert(c, target, dlg.pw1.text(), dlg.legacy.isChecked())
+        except PfxError as err:
+            QMessageBox.warning(self, tr("app_name"), tr("export_failed", err=err))
+            return
+        QMessageBox.information(self, tr("app_name"), tr("export_done", path=target))
 
     def delete(self):
         it = self.tree.currentItem()
